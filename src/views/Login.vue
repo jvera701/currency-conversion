@@ -1,32 +1,45 @@
 <template>
   <div class="container">
-    <form v-on:submit.prevent="login" class="left-container">
+    <form v-on:submit.prevent="loginPressed" class="left-container">
       <h1 class="title">Login to account</h1>
       <h2 class="subtitle">Enter your credentials to access your account</h2>
       <input placeholder="Enter the email" class="top-input" v-model="email" />
       <input placeholder="Enter password" type="password" v-model="password" />
       <button type="submit">Login</button>
+      <h2 v-if="failed" class="failed">Wrong credentials, please try again</h2>
     </form>
     <img src="../assets/coin-image.png" class="coin" />
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
-export default defineComponent({
-  data() {
-    return {
-      email: '',
-      password: ''
+import { ref } from 'vue'
+import { login } from '../api/api'
+import { useRouter } from 'vue-router'
+const delay = (ms: number) => new Promise((res) => setTimeout(res, ms))
+
+export default {
+  setup() {
+    const email = ref('')
+    const password = ref('')
+    const failed = ref(false)
+    const router = useRouter()
+
+    const loginPressed = async () => {
+      const result = await login(email.value, password.value)
+      if ('error' in result) {
+        failed.value = true
+        await delay(3000)
+        failed.value = false
+      } else {
+        // successful login
+        router.push('/graph')
+      }
     }
-  },
-  methods: {
-    login() {
-      console.log(this.email)
-      console.log(this.password)
-    }
+
+    return { email, password, failed, loginPressed }
   }
-})
+}
 </script>
 
 <style scoped>
@@ -39,6 +52,12 @@ export default defineComponent({
   font-weight: 400;
   font-size: 16px;
   color: #4f4d55;
+}
+.failed {
+  font-weight: 600;
+  font-size: 20px;
+  color: red;
+  padding-top: 2rem;
 }
 .left-container {
   display: flex;
