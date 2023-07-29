@@ -26,77 +26,125 @@
         <div>{{ answer }}</div>
       </div>
       <h3 v-if="fromCountry !== '' && toCountry !== ''" class="from-text">
-        From {{ countryDict[fromCountry] }} to {{ countryDict[toCountry] }} {{ ratesData }}
+        From {{ countryDict[fromCountry] }} to {{ countryDict[toCountry] }}
+        <LineChart :chartData="testData" :options="options" />
       </h3>
     </div>
     <div v-else>Loading ...</div>
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts">
 import { onMounted, ref, watchEffect } from 'vue'
 import { getCountries, getLatestConversion, getHistorical } from '../api/api'
 import { useUserStore } from '../stores/user'
-import { defineComponent } from 'vue'
-import { DoughnutChart } from 'vue-chart-3'
+import { defineComponent, computed } from 'vue'
+import { LineChart } from 'vue-chart-3'
 import { Chart, registerables } from 'chart.js'
 
-const store = useUserStore()
-const fromCountry = ref('')
-const toCountry = ref('')
-const countryList = ref<String[]>([])
-const countryDict = ref({})
-const ratesFrom = ref({})
-const inputAmount = ref()
-const answer = ref(0)
-const ratesData = ref<Number[]>([])
-const token = store.token.token
-const previousMonthAmount = 2
+Chart.register(...registerables)
 
-const getData = async (currentRate: number) => {
-  console.log('HERE')
-  const temp: Number[] = []
-  for (let i = 1; i <= previousMonthAmount; i++) {
-    const now = new Date()
-    const prev1 = new Date(now.getFullYear(), now.getMonth() - i, 15)
-    const dateString = prev1.toISOString().split('T')[0]
-    const result = await getHistorical(token, dateString, fromCountry.value, toCountry.value)
-    if (!('error' in result)) {
-      i === 1 && temp.unshift(currentRate)
-      temp.unshift(result.rates[toCountry.value])
+export default defineComponent({
+  components: { LineChart },
+  setup() {
+    const store = useUserStore()
+    const fromCountry = ref('')
+    const toCountry = ref('')
+    const countryList = ref<String[]>([])
+    const countryDict = ref({})
+    const ratesFrom = ref({})
+    const inputAmount = ref()
+    const answer = ref(0)
+    const ratesData = ref<Number[]>([])
+    const token = store.token.token
+    const monthList = ref<String[]>([])
+    const previousMonthAmount = 2
+    const options = ref({
+      plugins: {
+        legend: {
+          display: false
+        }
+      }
+    })
+
+    const getData = async (currentRate: number) => {
+      const temp: Number[] = []
+      const tempMonth: String[] = []
+
+      const now = new Date()
+      for (let i = 1; i <= previousMonthAmount; i++) {
+        const month = now.getMonth() - i
+        const prev1 = new Date(now.getFullYear(), month, 15)
+        const dateString = prev1.toISOString().split('T')[0]
+        const result = await getHistorical(token, dateString, fromCountry.value, toCountry.value)
+        if (!('error' in result)) {
+          if (i === 1) {
+            temp.unshift(currentRate)
+            tempMonth.unshift(new Intl.DateTimeFormat('en-US', { month: 'long' }).format(now))
+          }
+          temp.unshift(result.rates[toCountry.value])
+          tempMonth.unshift(new Intl.DateTimeFormat('en-US', { month: 'long' }).format(prev1))
+        }
+      }
+      ratesData.value = temp
+      monthList.value = tempMonth
     }
-  }
-  ratesData.value = temp
-}
 
-onMounted(async () => {
-  const result = await getCountries(token)
+    onMounted(async () => {
+      const result = await getCountries(token)
 
-  if (!('error' in result)) {
-    countryList.value = Object.keys(result)
-    countryDict.value = result
-  }
-})
+      if (!('error' in result)) {
+        countryList.value = Object.keys(result)
+        countryDict.value = result
+      }
+    })
 
-watchEffect(async () => {
-  if (fromCountry.value !== '') {
-    const result = await getLatestConversion(token, fromCountry.value)
-    if (!('error' in result)) {
-      ratesFrom.value = result.rates
+    watchEffect(async () => {
+      if (fromCountry.value !== '') {
+        const result = await getLatestConversion(token, fromCountry.value)
+        if (!('error' in result)) {
+          ratesFrom.value = result.rates
+        }
+      }
+    })
+
+    watchEffect(() => {
+      if (fromCountry.value !== '' && toCountry.value !== '' && !isNaN(inputAmount.value)) {
+        answer.value = inputAmount.value * ratesFrom.value[toCountry.value]
+      }
+    })
+
+    watchEffect(() => {
+      if (fromCountry.value !== '' && toCountry.value !== '') {
+        const rates = ratesFrom.value[toCountry.value]
+        getData(rates)
+      }
+    })
+
+    const testData = computed(() => ({
+      labels: monthList.value,
+      datasets: [
+        {
+          label: '',
+          data: ratesData.value,
+          borderColor: '#1751D0'
+        }
+      ]
+    }))
+
+    return {
+      countryList,
+      fromCountry,
+      toCountry,
+      countryDict,
+      ratesFrom,
+      inputAmount,
+      answer,
+      ratesData,
+      testData,
+      monthList,
+      options
     }
-  }
-})
-
-watchEffect(() => {
-  if (fromCountry.value !== '' && toCountry.value !== '' && !isNaN(inputAmount.value)) {
-    answer.value = inputAmount.value * ratesFrom.value[toCountry.value]
-  }
-})
-
-watchEffect(() => {
-  if (fromCountry.value !== '' && toCountry.value !== '') {
-    const rates = ratesFrom.value[toCountry.value]
-    getData(rates)
   }
 })
 </script>
@@ -104,7 +152,7 @@ watchEffect(() => {
 <style scoped>
 .container {
   background-color: var(--color-neutral-gray);
-  width: 100vw;
+  width: 100%;
   height: 100vh;
   display: flex;
   align-items: center;
@@ -118,11 +166,15 @@ h1 {
   font-size: 72px;
   color: var(--color-text-gray);
   font-weight: 475;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 h2 {
   font-size: 16px;
   color: var(--color-text);
   font-weight: 400;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 .white-container {
   background-color: white;
@@ -134,8 +186,9 @@ h2 {
   display: flex;
   flex-direction: column;
   padding-top: 2rem;
-  padding-left: 2rem;
-  padding-right: 2rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  margin-bottom: 2rem;
 }
 select {
   max-height: 2rem;
@@ -160,8 +213,16 @@ input {
 }
 
 @media (max-width: 600px) {
-  .white-container {
+  .inner-container {
     flex-direction: column;
+  }
+
+  .white-container {
+    height: 100%;
+  }
+
+  .container {
+    height: 100%;
   }
 }
 </style>
