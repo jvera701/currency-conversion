@@ -12,32 +12,28 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 import { ref } from 'vue'
 import { login } from '../api/api'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '../stores/user'
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms))
+const store = useUserStore()
 
-export default {
-  setup() {
-    const email = ref('')
-    const password = ref('')
-    const failed = ref(false)
-    const router = useRouter()
+const email = ref('')
+const password = ref('')
+const failed = ref(false)
+const router = useRouter()
 
-    const loginPressed = async () => {
-      const result = await login(email.value, password.value)
-      if ('error' in result) {
-        failed.value = true
-        await delay(3000)
-        failed.value = false
-      } else {
-        // successful login
-        router.push('/graph')
-      }
-    }
-
-    return { email, password, failed, loginPressed }
+const loginPressed = async () => {
+  const result = await login(email.value, password.value)
+  if ('error' in result) {
+    failed.value = true
+    await delay(3000)
+    failed.value = false
+  } else {
+    store.updateToken(result)
+    router.push('/graph')
   }
 }
 </script>
