@@ -83,6 +83,7 @@ export default defineComponent({
         if (!('error' in result)) {
           if (i === 1) {
             temp.unshift(currentRate)
+            // Get current month and add it to the list
             tempMonth.unshift(new Intl.DateTimeFormat('en-US', { month: 'long' }).format(now))
           }
           temp.unshift(result.rates[toCountry.value])
