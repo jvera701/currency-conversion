@@ -6,18 +6,19 @@ const API = axios.create({
   timeoutErrorMessage: 'Timeout error'
 })
 
-export interface CountryData {
-  country: string
-  rate: number
+interface LoginData {
+  token: string
 }
 
+export type AllCountriesData = Record<string, number>
+
 interface LatestConversionData {
-  rates: CountryData[]
+  rates: AllCountriesData
 }
 
 const login = async (email: string, password: string) => {
   try {
-    const response = await API.post('/login', { email: email, password: password })
+    const response = await API.post<LoginData>('/login', { email: email, password: password })
     return response.data
   } catch (e) {
     return {
@@ -33,7 +34,7 @@ const getCountries = async (userToken: string) => {
         authorization: userToken
       }
     }
-    const response = await API.get('/currencies', config)
+    const response = await API.get<AllCountriesData>('/currencies', config)
     return response.data
   } catch (e) {
     return {
@@ -77,7 +78,7 @@ const getHistorical = async (
         authorization: userToken
       }
     }
-    const response = await API.get(`/historical/${date}`, config)
+    const response = await API.get<LatestConversionData>(`/historical/${date}`, config)
     return response.data
   } catch (e) {
     return {

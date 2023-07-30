@@ -14,7 +14,7 @@
             <option v-for="(item, key) in countryList" :key="key">{{ item }}</option>
           </select>
         </h3>
-        <input type="number" v-model="inputAmount" min="0" placeholder="Enter here" />
+        <input type="number" v-model.number="inputAmount" min="0" placeholder="Enter here" />
         <h3 class="inner-column">
           To
           <select v-model="toCountry">
@@ -41,6 +41,7 @@ import { useUserStore } from '../stores/user'
 import { defineComponent, computed } from 'vue'
 import { LineChart } from 'vue-chart-3'
 import { Chart, registerables } from 'chart.js'
+import type { AllCountriesData } from '../api/api'
 
 Chart.register(...registerables)
 
@@ -51,12 +52,14 @@ export default defineComponent({
     const fromCountry = ref('')
     const toCountry = ref('')
     const countryList = ref<String[]>([])
-    const countryDict = ref({})
-    const ratesFrom = ref({})
-    const inputAmount = ref()
+    const countryDict = ref<AllCountriesData>({})
+    const ratesFrom = ref<AllCountriesData>({
+      '1': 1
+    })
+    const inputAmount = ref(0)
     const answer = ref(0)
     const ratesData = ref<Number[]>([])
-    const token = store.token.token
+    const token = store.token
     const monthList = ref<String[]>([])
     const previousMonthAmount = 2
     const options = ref({

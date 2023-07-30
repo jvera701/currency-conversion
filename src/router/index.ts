@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Login from '../views/Login.vue'
-import Graph from '../views/Graph.vue'
+import LoginPage from '../views/LoginPage.vue'
+import GraphPage from '../views/GraphPage.vue'
 import { useUserStore } from '../stores/user'
 
 const router = createRouter({
@@ -9,12 +9,12 @@ const router = createRouter({
     {
       path: '/',
       name: 'login',
-      component: Login
+      component: LoginPage
     },
     {
       path: '/graph',
       name: 'graph',
-      component: Graph
+      component: GraphPage
     }
   ]
 })

@@ -27,12 +27,13 @@ const router = useRouter()
 
 const loginPressed = async () => {
   const result = await login(email.value, password.value)
+
   if ('error' in result) {
     failed.value = true
     await delay(3000)
     failed.value = false
   } else {
-    store.updateToken(result)
+    store.updateToken(result.token)
     router.push('/graph')
   }
 }
