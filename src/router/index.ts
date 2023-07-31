@@ -25,6 +25,11 @@ router.beforeEach(async (to) => {
   if (store.token === '' && to.name !== 'login') {
     return { name: 'login' }
   }
+
+  // if user is authenticated, redirect to graph page
+  if (store.token !== '' && to.name !== 'graph') {
+    return { name: 'graph' }
+  }
 })
 
 export default router

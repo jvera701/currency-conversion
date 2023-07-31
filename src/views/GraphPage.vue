@@ -11,10 +11,16 @@
           From
           <select v-model="fromCountry">
             <option disabled value="">Please select one</option>
-            <option v-for="(item, key) in countryList" :key="key">{{ item }}</option>
+            <option>USD</option>
           </select>
         </h3>
-        <input type="number" v-model.number="inputAmount" min="0" placeholder="Enter here" />
+        <input
+          type="number"
+          v-model.number="inputAmount"
+          min="0"
+          placeholder="Enter here"
+          class="currency-input"
+        />
         <h3 class="inner-column">
           To
           <select v-model="toCountry">
@@ -23,12 +29,13 @@
           </select>
         </h3>
 
-        <div>{{ answer }}</div>
+        <div class="blue-answer">{{ answer }}</div>
       </div>
-      <h3 v-if="fromCountry !== '' && toCountry !== ''" class="from-text">
+      <h3 v-if="fromCountry !== '' && toCountry !== ''">
         From {{ countryDict[fromCountry] }} to {{ countryDict[toCountry] }}
-        <LineChart :chartData="testData" :options="options" />
+        <h3>{{ ratesFrom[toCountry] }}</h3>
       </h3>
+      <LineChart :chartData="testData" :options="options" />
     </div>
     <div v-else>Loading ...</div>
   </div>
@@ -56,7 +63,7 @@ export default defineComponent({
     const ratesFrom = ref<AllCountriesData>({
       '1': 1
     })
-    const inputAmount = ref(0)
+    const inputAmount = ref()
     const answer = ref(0)
     const ratesData = ref<Number[]>([])
     const token = store.token
@@ -70,11 +77,13 @@ export default defineComponent({
       }
     })
 
+    // Gets all historical data so that graph can read it
     const getData = async (currentRate: number) => {
       const temp: Number[] = []
       const tempMonth: String[] = []
 
       const now = new Date()
+      //Get all previous dates and historical rate for each date
       for (let i = 1; i <= previousMonthAmount; i++) {
         const month = now.getMonth() - i
         const prev1 = new Date(now.getFullYear(), month, 15)
@@ -95,6 +104,7 @@ export default defineComponent({
     }
 
     onMounted(async () => {
+      // Get all countries on first render
       const result = await getCountries(token)
 
       if (!('error' in result)) {
@@ -105,6 +115,7 @@ export default defineComponent({
 
     watchEffect(async () => {
       if (fromCountry.value !== '') {
+        // Fetch the conversion data for base currency
         const result = await getLatestConversion(token, fromCountry.value)
         if (!('error' in result)) {
           ratesFrom.value = result.rates
@@ -113,15 +124,16 @@ export default defineComponent({
     })
 
     watchEffect(() => {
-      if (fromCountry.value !== '' && toCountry.value !== '' && !isNaN(inputAmount.value)) {
-        answer.value = inputAmount.value * ratesFrom.value[toCountry.value]
-      }
-    })
-
-    watchEffect(() => {
       if (fromCountry.value !== '' && toCountry.value !== '') {
+        // Get the current rates
         const rates = ratesFrom.value[toCountry.value]
         getData(rates)
+        if (!isNaN(inputAmount.value)) {
+          // Update answer value
+          const tempAnswer = inputAmount.value * ratesFrom.value[toCountry.value]
+          const roundedAnswer = Math.round((tempAnswer + Number.EPSILON) * 100) / 100
+          answer.value = roundedAnswer
+        }
       }
     })
 
@@ -189,31 +201,42 @@ h2 {
   height: 70%;
   display: flex;
   flex-direction: column;
-  padding-top: 2rem;
   padding-left: 1.5rem;
   padding-right: 1.5rem;
   margin-bottom: 2rem;
+  padding-bottom: 2rem;
 }
 select {
   max-height: 2rem;
   margin-top: 1rem;
 }
-input {
+
+.currency-input {
   max-height: 2rem;
-  margin-top: 1rem;
+  margin-top: 2rem;
 }
+
+.currency-input::placeholder {
+  color: #4facfe;
+}
+
 .inner-column {
   display: flex;
   flex-direction: column;
+  padding-top: 2rem;
 }
 .inner-container {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
+  padding-bottom: 3rem;
 }
 
-.from-text {
-  padding-top: 3rem;
+.blue-answer {
+  color: #4facfe;
+  width: 4vw;
+  font-size: 18px;
+  padding-top: 2rem;
 }
 
 @media (max-width: 600px) {
