@@ -42,13 +42,13 @@
 </template>
 
 <script lang="ts">
-import { onMounted, ref, watchEffect } from 'vue'
-import { getCountries, getLatestConversion, getHistorical } from '../api/api'
+import { onMounted, ref, watchEffect, toRaw } from 'vue'
+import { getCountries, getHistorical } from '../api/api'
 import { useUserStore } from '../stores/user'
 import { defineComponent, computed } from 'vue'
 import { LineChart } from 'vue-chart-3'
 import { Chart, registerables } from 'chart.js'
-import type { AllCountriesData } from '../api/api'
+import type { CountriesRates, AllRates, InitialCountries } from '../api/api'
 
 Chart.register(...registerables)
 
@@ -59,16 +59,14 @@ export default defineComponent({
     const fromCountry = ref('')
     const toCountry = ref('')
     const countryList = ref<String[]>([])
-    const countryDict = ref<AllCountriesData>({})
-    const ratesFrom = ref<AllCountriesData>({
-      '1': 1
-    })
+    const countryDict = ref<InitialCountries>({})
+    const ratesFrom = ref<CountriesRates>({})
     const inputAmount = ref()
     const answer = ref(0)
-    const ratesData = ref<Number[]>([])
+    const ratesData = ref<AllRates[]>([])
     const token = store.token
     const monthList = ref<String[]>([])
-    const previousMonthAmount = 2
+    const PREVIOUS_MONTH_AMOUNT = 4
     const options = ref({
       plugins: {
         legend: {
@@ -78,29 +76,22 @@ export default defineComponent({
     })
 
     // Gets all historical data so that graph can read it
-    const getData = async (currentRate: number) => {
-      const temp: Number[] = []
-      const tempMonth: String[] = []
-
+    const getData = async () => {
       const now = new Date()
-      //Get all previous dates and historical rate for each date
-      for (let i = 1; i <= previousMonthAmount; i++) {
-        const month = now.getMonth() - i
-        const prev1 = new Date(now.getFullYear(), month, 15)
-        const dateString = prev1.toISOString().split('T')[0]
-        const result = await getHistorical(token, dateString, fromCountry.value, toCountry.value)
-        if (!('error' in result)) {
-          if (i === 1) {
-            temp.unshift(currentRate)
-            // Get current month and add it to the list
-            tempMonth.unshift(new Intl.DateTimeFormat('en-US', { month: 'long' }).format(now))
-          }
-          temp.unshift(result.rates[toCountry.value])
-          tempMonth.unshift(new Intl.DateTimeFormat('en-US', { month: 'long' }).format(prev1))
-        }
+      const dateString = now.toISOString().split('T')[0]
+      const result = await getHistorical(
+        token,
+        dateString,
+        fromCountry.value,
+        PREVIOUS_MONTH_AMOUNT
+      )
+      if (!('error' in result)) {
+        const monthLists = result.map((x) => Object.keys(x)[0])
+        const temp = result[result.length - 1]
+        ratesData.value = result
+        monthList.value = monthLists
+        ratesFrom.value = Object.values(temp)[0]
       }
-      ratesData.value = temp
-      monthList.value = tempMonth
     }
 
     onMounted(async () => {
@@ -113,27 +104,20 @@ export default defineComponent({
       }
     })
 
-    watchEffect(async () => {
+    watchEffect(() => {
       if (fromCountry.value !== '') {
         // Fetch the conversion data for base currency
-        const result = await getLatestConversion(token, fromCountry.value)
-        if (!('error' in result)) {
-          ratesFrom.value = result.rates
-        }
+        getData()
       }
     })
 
     watchEffect(() => {
-      if (fromCountry.value !== '' && toCountry.value !== '') {
-        // Get the current rates
-        const rates = ratesFrom.value[toCountry.value]
-        getData(rates)
-        if (!isNaN(inputAmount.value)) {
-          // Update answer value
-          const tempAnswer = inputAmount.value * ratesFrom.value[toCountry.value]
-          const roundedAnswer = Math.round((tempAnswer + Number.EPSILON) * 100) / 100
-          answer.value = roundedAnswer
-        }
+      if (fromCountry.value !== '' && toCountry.value !== '' && !isNaN(inputAmount.value)) {
+        // Update answer value
+
+        const tempAnswer = inputAmount.value * ratesFrom.value[toCountry.value]
+        const roundedAnswer = Math.round((tempAnswer + Number.EPSILON) * 100) / 100
+        answer.value = roundedAnswer
       }
     })
 
@@ -142,7 +126,10 @@ export default defineComponent({
       datasets: [
         {
           label: '',
-          data: ratesData.value,
+          data: ratesData.value.map((x) => {
+            const country = toRaw(x)
+            return Object.values(country)[0][toCountry.value]
+          }),
           borderColor: '#1751D0'
         }
       ]
