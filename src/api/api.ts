@@ -10,10 +10,25 @@ interface LoginData {
   token: string
 }
 
-export type AllCountriesData = Record<string, number>
+export type CountriesRates = Record<string, number>
+export type InitialCountries = Record<string, string>
 
-interface LatestConversionData {
-  rates: AllCountriesData
+type MonthNames =
+  | 'January'
+  | 'February'
+  | 'March'
+  | 'April'
+  | 'May'
+  | 'June'
+  | 'July'
+  | 'August'
+  | 'September'
+  | 'October'
+  | 'November'
+  | 'December'
+
+export type AllRates = {
+  [value in MonthNames]: Record<string, number>
 }
 
 const login = async (email: string, password: string) => {
@@ -34,26 +49,7 @@ const getCountries = async (userToken: string) => {
         authorization: userToken
       }
     }
-    const response = await API.get<AllCountriesData>('/currencies', config)
-    return response.data
-  } catch (e) {
-    return {
-      error: 'Error'
-    }
-  }
-}
-
-const getLatestConversion = async (userToken: string, country: string) => {
-  try {
-    const config = {
-      params: {
-        base: country
-      },
-      headers: {
-        authorization: userToken
-      }
-    }
-    const response = await API.get<LatestConversionData>('/latest', config)
+    const response = await API.get<InitialCountries>('/currencies', config)
     return response.data
   } catch (e) {
     return {
@@ -66,19 +62,18 @@ const getHistorical = async (
   userToken: string,
   date: string,
   fromCountry: string,
-  toCountry: string
+  times: number
 ) => {
   try {
     const config = {
       params: {
-        base: fromCountry,
-        symbol: toCountry
+        base: fromCountry
       },
       headers: {
         authorization: userToken
       }
     }
-    const response = await API.get<LatestConversionData>(`/historical/${date}`, config)
+    const response = await API.get<AllRates[]>(`/historical/${date}/${times.toString()}`, config)
     return response.data
   } catch (e) {
     return {
@@ -87,4 +82,4 @@ const getHistorical = async (
   }
 }
 
-export { login, getCountries, getLatestConversion, getHistorical }
+export { login, getCountries, getHistorical }
